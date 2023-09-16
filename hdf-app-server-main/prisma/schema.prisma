@@ -1,0 +1,465 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider = "nestjs-zod-prisma"
+  output   = "../src/zod"
+
+  relationModel = false
+  generateDto   = true
+
+  modelCase             = "PascalCase"
+  modelSuffix           = "Model"
+  dtoCase               = "PascalCase"
+  dtoSuffix             = "Dto"
+  useDecimalJs          = true
+  // imports               = null
+  prismaJsonNullability = true
+}
+
+// datasource db {
+//   provider = "sqlite"
+//   url      = env("DATABASE_URL")
+// }
+
+// datasource db {
+//   provider = "mysql"
+//   url      = env("DATABASE_MYSQL_URL")
+// }
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_PgSQL_URL")
+}
+
+model User {
+  id             String          @id @default(uuid())
+  userName       String          @unique @map("user_name")
+  password       String          @default("hdf001")
+  avatar         String          @default("")
+  nickName       String          @default("") @map("nick_name")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  address        String          @default("")
+  mobile         String          @default("")
+  doctorComments DoctorComment[] // 对医生的评价
+  consultations  Consultation[] // 向医生提出的咨询
+
+  doctorCollections  DoctorCollection[]
+  articleCollections ArticleCollection[]
+  shopCarts          ShopCart[]
+  orders             Order[]
+  Address            Address[]
+
+  @@map("users")
+}
+
+// 找医生部分
+model Doctor {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  desc      String   @default("") @db.Text
+  tags      String   @default("")
+  content   String   @default("") @db.Text
+  avatar    String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  // 建立关联的模型中使用到的名字
+  //  fields 当前表中的字段
+  //  references 关联表中的字段
+  //  通过设置关联字段为可选，可以在关联数据为空时查询不报错
+
+  departmentInfo  Department?     @relation(fields: [departmentId], references: [id])
+  departmentId    String?         @map("department_id")
+  doctorTitleInfo DoctorTitle?    @relation(fields: [doctorTitleId], references: [id])
+  doctorTitleId   String?         @map("doctor_title_id")
+  doctorComments  DoctorComment[] // 都当前医生的评价
+  // 医生所属医院
+  hospitalInfo    Hospital?       @relation(fields: [hospitalId], references: [id])
+  hospitalId      String?         @map("hospital_id")
+
+  consultations     Consultation[]
+  doctorCollections DoctorCollection[]
+  ArticleCollection ArticleCollection[]
+
+  @@map("doctors")
+}
+
+model Department {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  desc      String   @default("") @db.Text
+  content   String   @default("") @db.Text
+  image     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  doctors   Doctor[]
+
+  @@map("departments")
+}
+
+model DoctorTitle {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  desc      String   @default("") @db.Text
+  image     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  doctors Doctor[]
+
+  @@map("doctor_titles")
+}
+
+// 医生标签关键词(擅长的疾病)，主要用于录入医生标签信息的时候作为参考。
+model DoctorTag {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  desc      String   @default("") @db.Text
+  image     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("doctor_tags")
+}
+
+// 医生的评价
+model DoctorComment {
+  id         String   @id @default(uuid())
+  level      Float    @default(5) // 评分
+  content    String   @default("")
+  image      String   @default("")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  userInfo   User?    @relation(fields: [userId], references: [id])
+  userId     String?  @map("user_id")
+  doctorInfo Doctor?  @relation(fields: [doctorId], references: [id])
+  doctorId   String?  @map("doctor_id")
+
+  @@map("doctor_comments")
+}
+
+model Hospital {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  desc      String   @default("") @db.Text
+  image     String   @default("")
+  content   String   @default("") @db.Text
+  address   String   @default("")
+  phone     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  doctors   Doctor[]
+
+  @@map("hospitals")
+}
+
+// 向医生咨询
+model Consultation {
+  id      String  @id @default(uuid())
+  content String  @default("") // 咨询的内容
+  reply   String  @default("") // 回复
+  isPayed Boolean @default(false) @map("is_payed") // 是否支付
+  isReply Boolean @default(false) @map("is_replay") // 是否回复
+  user    User    @relation(fields: [userId], references: [id])
+  doctor  Doctor  @relation(fields: [doctorId], references: [id])
+
+  userId   String @map("user_id")
+  doctorId String @map("doctor_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("consultations")
+}
+
+// 药品分类
+model MedicineCategory {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  desc      String   @default("") @db.Text
+  image     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // 添加药品分类关联，做多级关联
+  parent MedicineCategory? @relation("MedicineCategoryToMedicineCategory", fields: [medicineCategoryId], references: [id])
+
+  medicines          Medicine[]
+  medicineCategoryId String?            @map("medicine_category_id") // 父级的id
+  medicineCategories MedicineCategory[] @relation("MedicineCategoryToMedicineCategory")
+
+  @@map("medicine_categories")
+}
+
+// 药品信息
+model Medicine {
+  id                 String            @id @default(uuid())
+  name               String            @default("")
+  desc               String            @default("")
+  tags               String            @default("") // 主治的症状标签，多个用,分割
+  image              String            @default("")
+  content            String            @default("")
+  isStanding         Boolean           @default(false) @map("is_standing") // 是否常备药品
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+  category           MedicineCategory? @relation(fields: [medicineCategoryId], references: [id])
+  medicineCategoryId String?           @map("medicine_category_id")
+  price              Float             @default(0)
+  amount             Int               @default(0)
+
+  illnessMedicine IllnessMedicine[]
+  ShopCart        ShopCart[]
+  OrderDetail     OrderDetail[]
+
+  @@map("medicines")
+}
+
+// 文章资讯类
+model ArticleCategory {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  desc      String   @default("") @db.Text
+  image     String   @default("")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  articles Article[]
+
+  @@map("article_categories")
+}
+
+// 文章资讯数据
+model Article {
+  id        String   @id @default(uuid())
+  name      String   @default("")
+  desc      String   @default("") @db.Text
+  tags      String   @default("") // 主治的症状标签，多个用,分割
+  image     String   @default("")
+  content   String   @default("") @db.Text
+  views     Decimal  @default(20) // 浏览次数
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  category          ArticleCategory? @relation(fields: [articleCategoryId], references: [id])
+  articleCategoryId String?          @map("article_category_id")
+
+  articleCollections ArticleCollection[]
+
+  @@map("articles")
+}
+
+// 管理员
+model Manager {
+  id        String   @id @default(uuid())
+  userName  String   @unique @map("user_name")
+  password  String
+  avatar    String   @default("")
+  nickName  String   @default("") @map("nick_name")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  role   Role?   @relation(fields: [roleId], references: [id])
+  roleId String? @map("role_id")
+
+  @@map("managers")
+}
+
+// 角色
+model Role {
+  id                String               @id @default(uuid())
+  name              String               @unique
+  desc              String               @default("")
+  permissionOnRoles PermissionsOnRoles[]
+
+  managers  Manager[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("roles")
+}
+
+// 权限
+model Permission {
+  id   String @id @default(uuid())
+  name String
+  desc String @default("")
+
+  parent Permission? @relation("PermissionToPermission", fields: [permissionId], references: [id])
+
+  permissionOnRoles PermissionsOnRoles[]
+
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+  permissionId String?      @map("permission_id")
+  permission   Permission[] @relation("PermissionToPermission")
+
+  @@map("permissions")
+}
+
+model PermissionsOnRoles {
+  id           String      @id @default(uuid())
+  role         Role?       @relation(fields: [roleId], references: [id])
+  roleId       String?     @map("role_id")
+  permission   Permission? @relation(fields: [permissionId], references: [id])
+  permissionId String?     @map("permission_id")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+
+  @@map("permissions_on_roles")
+}
+
+// 用户关注的医生
+model DoctorCollection {
+  id String @id @default(uuid())
+
+  user     User?   @relation(fields: [userId], references: [id])
+  doctor   Doctor? @relation(fields: [doctorId], references: [id])
+  userId   String? @map("user_id")
+  doctorId String? @map("doctor_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("doctor_collections")
+}
+
+// 用户收藏的文章
+model ArticleCollection {
+  id String @id @default(uuid())
+
+  user     User?   @relation(fields: [userId], references: [id])
+  doctor   Doctor? @relation(fields: [doctorId], references: [id])
+  userId   String? @map("user_id")
+  doctorId String? @map("doctor_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  article   Article? @relation(fields: [articleId], references: [id])
+  articleId String?  @map("article_id")
+
+  @@map("article_collections")
+}
+
+// 疾病分类
+model IllnessCategory {
+  id    String @id @default(uuid())
+  name  String @default("")
+  desc  String @default("")
+  image String @default("")
+
+  illnesses Illness[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("illness_categories")
+}
+
+// 疾病信息
+model Illness {
+  id         String   @id @default(uuid())
+  name       String   @default("")
+  desc       String   @default("")
+  tags       String   @default("") // 疾病的标签信息
+  image      String   @default("")
+  content    String   @default("")
+  isStanding Boolean  @default(false) @map("is_standing") // 是否常见病
+  views      Decimal  @default(0) // 浏览次数
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // 疾病分类信息
+  illnessCategory   IllnessCategory? @relation(fields: [illnessCategoryId], references: [id])
+  illnessCategoryId String?          @map("illness_category_id")
+
+  illnessMedicine IllnessMedicine[]
+
+  @@map("illnesses")
+}
+
+// 疾病关联药品
+model IllnessMedicine {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  illness    Illness?  @relation(fields: [illnessId], references: [id])
+  medicine   Medicine? @relation(fields: [medicineId], references: [id])
+  illnessId  String?   @map("illness_id")
+  medicineId String?   @map("medicine_id")
+
+  @@map("illnesses_medicines")
+}
+
+model ShopCart {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  medicine   Medicine? @relation(fields: [medicineId], references: [id])
+  medicineId String?   @map("medicine_id")
+  amount     Int       @default(1)
+  user       User?     @relation(fields: [userId], references: [id])
+  userId     String?   @map("user_id")
+  name       String?
+  price      Float?
+
+  @@map("shop_carts")
+}
+
+model Order {
+  id           String        @id @default(uuid())
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  price        Float?        @default(0)
+  isEnd        Boolean       @default(false) @map("is_end") // 是否完成
+  status       Int           @default(0) // 订单状态
+  isPayed      Boolean       @default(false) @map("is_payed")
+  region       String?       @default("") // 收货地区信息
+  regionCode   String?       @default("") @map("region_code") // 收货地区编码
+  address      String?       @default("") // 详细信息
+  expressInfo  String?       @default("") @map("express_info") // 物流信息
+  orderDetails OrderDetail[] // 一个订单可以关联多个商品，使用订单详情实现
+  user         User?         @relation(fields: [userId], references: [id])
+  userId       String?       @map("user_id")
+
+  @@map("orders")
+}
+
+model OrderDetail {
+  id         String    @id @default(uuid())
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  price      Float?    @default(0)
+  medicine   Medicine? @relation(fields: [medicineId], references: [id])
+  medicineId String?   @map("medicine_id")
+  amount     Int       @default(1)
+
+  order   Order?  @relation(fields: [orderId], references: [id])
+  orderId String? @map("order_id")
+
+  @@map("order_details")
+}
+
+// 用户收获地址数据
+model Address {
+  id         String   @id @default(uuid())
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+  name       String   @default("")
+  phone      String   @default("")
+  region     String?  @default("") // 收货地区信息
+  regionCode String?  @default("") @map("region_code") // 收货地区编码
+  address    String?  @default("") // 详细信息
+  isDefault  Boolean  @default(false) @map("is_default") // 是否默认地址
+  user       User?    @relation(fields: [userId], references: [id])
+  userId     String?  @map("user_id")
+
+  @@map("addresses")
+}

@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>在线咨询</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        width: 100vw;
+        height: 100vh;
+      }
+      .container {
+        display: flex;
+      }
+      .left {
+        width: 180px;
+      }
+      .on-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 16px;
+      }
+      .on-item.checked {
+        background-color: rgba(255, 68, 0, 0.301);
+      }
+      .on-item .avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+      }
+      .right {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      .chat-item {
+        margin: 1rem 0;
+        padding: 8px;
+        color: white;
+        border: 1px solid salmon;
+        padding: 8px;
+        border-radius: 8px;
+      }
+      .chat-content {
+        flex: 1;
+      }
+      .msg {
+        height: 6rem;
+        padding-bottom: 16px;
+      }
+      .msg textarea {
+        /* margin: 8px 16px; */
+        /* margin-bottom: 16px; */
+        width: 100%;
+        height: 100%;
+        padding: 8px;
+      }
+
+      .m {
+        background-color: green;
+        text-align: right;
+      }
+      .d {
+        background-color: orangered;
+      }
+    </style>
+  </head>
+  <body class="container">
+    <div class="left" id="doctorsInfo">
+      <!-- <div class="on-item">
+        <img class="avatar" src="" alt="" />
+        <h3>小一</h3>
+      </div> -->
+    </div>
+    <div class="right">
+      <!-- <button>刷新医生列表</button> -->
+      <div class="chat-content" id="chatContent">
+        <!-- <div class="chat-item d">医生：注意休息</div>
+        <div class="chat-item m">我：知道了。</div>
+        <div class="chat-item m">我：还有其他需要注意的吗。</div> -->
+      </div>
+      <div class="msg">
+        <textarea
+          placeholder="请输入内容，按下回车键进行发送"
+          id="txt"
+          cols="30"
+          rows="10"
+          onkeyup="sendHandle(event)"
+        ></textarea>
+      </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/socket.io-client@4.4.1/dist/socket.io.min.js"></script>
+    <script>
+      const socket = io({
+        query: {
+          id: 'a66adb62-3410-4fda-8e1c-476a95415ffe',
+          type: 'c',
+        },
+      });
+      const txt = document.querySelector('#txt');
+      const chatContent = document.querySelector('#chatContent');
+      const doctorsInfo = document.querySelector('#doctorsInfo');
+      var doctorId = ''; // 当前选择要咨询的医生
+      const userId = 'a66adb62-3410-4fda-8e1c-476a95415ffe'; // 先设置一个固定的用户，以后集成系统的时候需要先登录
+
+      socket.on('send_doctor_list', (doctors) => {
+        // console.log(doctors);
+        doctorsInfo.innerHTML = '';
+        doctors.forEach((item) => {
+          doctorsInfo.innerHTML += `<div class="on-item">
+        <img class="avatar" src="" alt="" />
+        <h3 data-id='${item.id}' onclick="selDoctor('${item.id}')">${item.name}</h3>
+      </div>`;
+        });
+      });
+
+      socket.on('reply', initHtml);
+
+      function initHtml(msg) {
+        // 根据消息拼接字符串进行展示
+        chatContent.innerHTML += `<div class="chat-item m">${msg.from}：${msg.content}</div>`;
+      }
+
+      function sendHandle(e) {
+        if (e.keyCode === 13 && e.target.value) {
+          if (doctorId) {
+            socket.emit('ask', {
+              doctor: doctorId,
+              user: userId,
+              content: e.target.value,
+            });
+            // 填充消息框
+            chatContent.innerHTML += `<div class="chat-item m">我：${txt.value}</div>`;
+            e.target.value = '';
+          } else {
+            alert('请选择医生');
+          }
+        }
+      }
+      function selDoctor(id) {
+        doctorId = id;
+      }
+    </script>
+  </body>
+</html>
